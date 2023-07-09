@@ -1,16 +1,7 @@
-use std::fs::ReadDir;
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub enum StorageError
+pub enum EntryError
 {
-    CantCreateStorageDir,
+    IllegalEntryType,
 }
-
-pub struct Storage
-{
-    path_buf: std::path::PathBuf,
-}
-
 
 #[derive(rocket::serde::Serialize, rocket::serde::Deserialize)]
 pub enum EntryType
@@ -43,9 +34,13 @@ pub struct File
 
 impl File
 {
-    pub fn new(path: EntryPath) -> File
+    pub fn new(path: EntryPath) -> Result<File, EntryError>
     {
-        return File { path: path, content: FileContent::NULL };
+        return match path.entry_type
+        {
+            EntryType::File => Ok(File { path: path, content: FileContent::NULL }),
+            EntryType::Dir => Err(EntryError::IllegalEntryType),
+        }
     }
 
     pub fn read(&mut self, storage: &Storage) -> Result<(), std::io::Error>
@@ -92,6 +87,53 @@ pub struct Dir
     entries: DirEntries,
 }
 
+impl Dir
+{
+    pub fn new(path: EntryPath) -> Result<Dir, EntryError>
+    {
+        return match path.entry_type
+        {
+            EntryType::File => Err(EntryError::IllegalEntryType),
+            EntryType::Dir => Ok(Dir { path: path, entries: DirEntries::NULL }),
+        }
+    }
+
+    pub fn read(&mut self, storage: &Storage) -> Result<(), std::io::Error>
+    {
+        return match storage.read_dir(&self.path.path) {
+            Ok(read_dir) =>
+            {
+                let mut entries = Vec::<EntryPath>::new();
+                for it in read_dir
+                {
+                    match it {
+                        Ok(entry) =>
+                        {
+                            let entry_path = entry.path();
+                            if entry_path.is_dir() { entries.push(EntryPath { path: storage.convert_to_storage_path(&entry_path).unwrap(), entry_type: EntryType::Dir }) }
+                            else { entries.push(EntryPath { path: storage.convert_to_storage_path(&entry_path).unwrap(), entry_type: EntryType::File }) }
+                        },
+                        Err(err) => return Err(err),
+                    }
+                }
+                self.entries = DirEntries::Content(entries);
+                return Ok(());
+            },
+            Err(err) => Err(err),
+        }
+    }
+
+    pub fn create(&mut self, storage: &Storage) -> Result<(), std::io::Error>
+    {
+        return storage.create_dir(&self.path.path);
+    }
+}
+
+
+pub struct Storage
+{
+    path: std::path::PathBuf,
+}
 
 impl Storage
 {
@@ -101,34 +143,53 @@ impl Storage
         let storage_path = std::path::Path::new(&storage_path_string);
         return match storage_path.exists()
         {
-            true => Ok( Storage { path_buf: storage_path.to_path_buf() } ),
+            true => Ok( Storage { path: storage_path.to_path_buf() } ),
             false => match std::fs::create_dir(storage_path) 
             {
-                Ok(i) => Ok( Storage { path_buf: storage_path.to_path_buf() } ),
+                Ok(_) => Ok( Storage { path: storage_path.to_path_buf() } ),
                 Err(err) => Err(err),
             }
         }
     }
 
-    pub fn convert_storage_path(&self, storage_path: &std::path::PathBuf) -> std::path::PathBuf
+    pub fn convert_from_storage_path(&self, storage_path: &std::path::PathBuf) -> std::path::PathBuf
     {
-        let mut file_path = self.path_buf.clone();
+        let mut file_path = self.path.clone();
         file_path.push(storage_path);
         return file_path;
     }
 
+    pub fn convert_to_storage_path(&self, path: &std::path::PathBuf) -> Result<std::path::PathBuf, std::path::StripPrefixError>
+    {
+        return match path.strip_prefix(&self.path)
+        {
+            Ok(result) => Ok(result.to_path_buf()),
+            Err(err) => Err(err),
+        }
+    }
+
     pub fn read(&self, storage_path: &std::path::PathBuf) -> Result<Vec<u8>, std::io::Error>
     {
-        return std::fs::read(self.convert_storage_path(storage_path));
+        return std::fs::read(self.convert_from_storage_path(storage_path));
     }
 
     pub fn write(&self, storage_path: &std::path::PathBuf, content: &Vec<u8>) -> Result<(), std::io::Error>
     {
-        return std::fs::write(self.convert_storage_path(storage_path), content);
+        return std::fs::write(self.convert_from_storage_path(storage_path), content);
     }
 
-    pub fn read_dir(&self, storage_path: &std::path::PathBuf) -> Result<ReadDir, std::io::Error>
+    pub fn read_dir(&self, storage_path: &std::path::PathBuf) -> Result<std::fs::ReadDir, std::io::Error>
     {
-        return std::fs::read_dir(self.convert_storage_path(storage_path));
+        return std::fs::read_dir(self.convert_from_storage_path(storage_path));
+    }
+
+    pub fn create_dir(&self, storage_path: &std::path::PathBuf) -> Result<(), std::io::Error>
+    {
+        let path = self.convert_from_storage_path(storage_path);
+        if storage_path.exists() { return Ok(()); }
+        return match std::fs::create_dir(path) {
+            Ok(()) => Ok(()),
+            Err(err) => Err(err),
+        }
     }
 }
