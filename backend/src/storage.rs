@@ -1,34 +1,90 @@
+#[derive(std::fmt::Debug)]
 pub enum EntryError
 {
     IllegalEntryType,
 }
 
-#[derive(rocket::serde::Serialize, rocket::serde::Deserialize)]
+
 pub enum EntryType
 {
     File,
     Dir,
 }
 
-#[derive(rocket::serde::Serialize, rocket::serde::Deserialize)]
+impl EntryType
+{
+    fn to_json(self) -> String
+    {
+        return match self {
+            EntryType::File => "file".to_string(),
+            EntryType::Dir => "dir".to_string(),
+        }
+    }
+}
+
+
 pub struct EntryPath
 {
-    path: std::path::PathBuf,
-    entry_type: EntryType,
+    pub path: std::path::PathBuf,
+    pub entry_type: EntryType,
+}
+
+impl EntryPath
+{
+    fn to_json(self) -> String
+    {
+        let mut json = "{".to_string();
+        json.push_str("\"path\":\"");
+        json.push_str(self.path.to_str().unwrap());
+        json.push_str("\",\"entry_type\":\"");
+        json.push_str(self.entry_type.to_json().as_str());
+        json.push_str("\"}");
+        return json;
+    }
 }
 
 
-#[derive(rocket::serde::Serialize, rocket::serde::Deserialize)]
-pub enum FileContent {
-    Content(Vec<u8>),
-    NULL,
+#[derive(rocket::serde::Deserialize)]
+pub struct FileContent
+{
+    pub content: Vec<u8>,
 }
 
-#[derive(rocket::serde::Serialize, rocket::serde::Deserialize)]
+impl FileContent
+{
+    pub fn to_json(self) -> String
+    {
+        let mut json = "[".to_string();
+        for el in self.content
+        {
+            json.push_str(el.to_string().as_str());
+            json.push(',');
+        }
+        if json.ends_with(',') { json.pop(); }
+        json.push(']');
+        return json;
+    }
+}
+
+impl<'r> rocket::response::Responder<'r, 'static> for FileContent
+{
+
+    fn respond_to(self, request:  &'r rocket::Request<'_>) -> rocket::response::Result<'static>
+    {
+        let json = self.to_json();
+        rocket::Response::build()
+            .streamed_body(std::io::Cursor::new(json))
+            .raw_header("Access-Control-Allow-Origin", "*")
+            .header(rocket::http::ContentType::new("application", "json"))
+            .ok()
+    }
+}
+
+
 pub struct File
 {
     path: EntryPath,
-    content: FileContent,
+    pub content: FileContent,
 }
 
 
@@ -38,7 +94,16 @@ impl File
     {
         return match path.entry_type
         {
-            EntryType::File => Ok(File { path: path, content: FileContent::NULL }),
+            EntryType::File => Ok(File { path: path, content: FileContent{ content: Vec::new() } }),
+            EntryType::Dir => Err(EntryError::IllegalEntryType),
+        }
+    }
+
+    pub fn new_with_content(path: EntryPath, content: Vec<u8>) -> Result<File, EntryError>
+    {
+        return match path.entry_type
+        {
+            EntryType::File => Ok(File { path: path, content: FileContent{ content: content } }),
             EntryType::Dir => Err(EntryError::IllegalEntryType),
         }
     }
@@ -48,7 +113,7 @@ impl File
         return match storage.read(&self.path.path) {
             Ok(content) =>
             {
-                self.content = FileContent::Content(content);
+                self.content = FileContent{ content: content };
                 Ok(())
             },
             Err(err) => Err(err),
@@ -58,33 +123,82 @@ impl File
     pub fn write(&self, storage: &Storage) -> Result<bool, std::io::Error>
     {
         let content = &self.content;
-        return match content
+        return match storage.write(&self.path.path, &content.content)
         {
-            FileContent::Content(content) => 
-            {
-                match storage.write(&self.path.path, content)
-                {
-                    Ok(()) => Ok(true),
-                    Err(err) => Err(err),
-                }
-            }
-            FileContent::NULL => Ok(false),
+            Ok(()) => Ok(true),
+            Err(err) => Err(err),
         }
+    }
+
+    pub fn to_json(self) -> String
+    {
+        let mut json = "{".to_string();
+        json.push_str("\"path\":\"");
+        json.push_str(self.path.to_json().as_str());
+        json.push_str("\",\"content\":");
+        json.push_str(self.content.to_json().as_str());
+        json.push_str("}");
+        return json;
+    }
+
+    
+}
+
+impl<'r> rocket::response::Responder<'r, 'static> for File
+{
+
+    fn respond_to(self, request:  &'r rocket::Request<'_>) -> rocket::response::Result<'static>
+    {
+        let json = self.to_json();
+        rocket::Response::build()
+            .streamed_body(std::io::Cursor::new(json))
+            .raw_header("Access-Control-Allow-Origin", "*")
+            .header(rocket::http::ContentType::new("application", "json"))
+            .ok()
     }
 }
 
 
-#[derive(rocket::serde::Serialize, rocket::serde::Deserialize)]
-pub enum DirEntries {
-    Content(Vec<EntryPath>),
-    NULL,
+pub struct DirEntries
+{
+    entries: Vec<EntryPath>,
 }
 
-#[derive(rocket::serde::Serialize, rocket::serde::Deserialize)]
+impl DirEntries
+{
+    pub fn to_json(self) -> String
+    {
+        let mut json = "[".to_string();
+        for entry in self.entries
+        {
+            json.push_str(entry.to_json().as_str());
+            json.push(',');
+        }
+        if json.ends_with(',') { json.pop(); }
+        json.push(']');
+        return json;
+    }
+}
+
+impl<'r> rocket::response::Responder<'r, 'static> for DirEntries
+{
+
+    fn respond_to(self, request:  &'r rocket::Request<'_>) -> rocket::response::Result<'static>
+    {
+        let json = self.to_json();
+        rocket::Response::build()
+            .streamed_body(std::io::Cursor::new(json))
+            .raw_header("Access-Control-Allow-Origin", "*")
+            .header(rocket::http::ContentType::new("application", "json"))
+            .ok()
+    }
+}
+
+
 pub struct Dir
 {
     path: EntryPath,
-    entries: DirEntries,
+    pub entries: DirEntries,
 }
 
 impl Dir
@@ -94,7 +208,7 @@ impl Dir
         return match path.entry_type
         {
             EntryType::File => Err(EntryError::IllegalEntryType),
-            EntryType::Dir => Ok(Dir { path: path, entries: DirEntries::NULL }),
+            EntryType::Dir => Ok(Dir { path: path, entries: DirEntries { entries: Vec::new() } }),
         }
     }
 
@@ -116,7 +230,7 @@ impl Dir
                         Err(err) => return Err(err),
                     }
                 }
-                self.entries = DirEntries::Content(entries);
+                self.entries = DirEntries { entries: entries };
                 return Ok(());
             },
             Err(err) => Err(err),
@@ -126,6 +240,31 @@ impl Dir
     pub fn create(&mut self, storage: &Storage) -> Result<(), std::io::Error>
     {
         return storage.create_dir(&self.path.path);
+    }
+
+    fn to_json(self) -> String
+    {
+        let mut json = "{".to_string();
+        json.push_str("\"path\":\"");
+        json.push_str(self.path.to_json().as_str());
+        json.push_str("\",\"entries\":");
+        json.push_str(self.entries.to_json().as_str());
+        json.push_str("}");
+        return json;
+    }
+}
+
+impl<'r> rocket::response::Responder<'r, 'static> for Dir
+{
+
+    fn respond_to(self, request:  &'r rocket::Request<'_>) -> rocket::response::Result<'static>
+    {
+        let json = self.to_json();
+        rocket::Response::build()
+            .streamed_body(std::io::Cursor::new(json))
+            .raw_header("Access-Control-Allow-Origin", "*")
+            .header(rocket::http::ContentType::new("application", "json"))
+            .ok()
     }
 }
 

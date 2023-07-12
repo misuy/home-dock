@@ -1,26 +1,28 @@
 <template>
-  <img alt="Vue logo" src="./assets/logo.png">
-  <HelloWorld msg="Welcome to Your Vue.js App"/>
+  <EntriesArea path=""/>
+  <EntryBox :entry="example_entry()"/>
 </template>
 
-<script>
-import HelloWorld from './components/HelloWorld.vue'
+<script lang="ts">
+import EntryBox from "./components/EntryBox.vue"
+import EntriesArea from "./components/EntriesArea.vue";
+import { EntryType, StorageEntry } from "./util";
 
 export default {
   name: 'App',
   components: {
-    HelloWorld
+    EntryBox,
+    EntriesArea,
+  },
+  methods: {
+    example_entry(): StorageEntry {
+      return new StorageEntry("hehe/123/hihi", EntryType.Dir);
+    }
   }
 }
 </script>
 
 <style>
 #app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
-  margin-top: 60px;
 }
 </style>

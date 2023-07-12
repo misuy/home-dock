@@ -4,59 +4,48 @@ mod storage;
 #[macro_use] extern crate rocket;
 
 
-#[post("/read_file", data = "<path>")]
-fn read_file(storage: &rocket::State<storage::Storage>, path: rocket::serde::json::Json<storage::EntryPath>) -> Result<rocket::serde::json::Json<storage::File>, std::io::Error>
+#[get("/read_file/<path..>")]
+fn read_file(storage: &rocket::State<storage::Storage>, path: std::path::PathBuf) -> storage::FileContent
 {
-    return match storage::File::new(path.into_inner())
-    {
-        Ok(mut file) => match file.read(storage)
-        {
-            Ok(()) => Ok(rocket::serde::json::Json(file)),
-            Err(err) => Err(err),
-        }
-        Err(_) => Err(std::io::Error::new(std::io::ErrorKind::Other, "IllegalEntryType")),
-    }
+    let mut file = storage::File::new(storage::EntryPath { path: path, entry_type: storage::EntryType::File }).unwrap();
+    file.read(storage);
+    return file.content;
 }
 
 
-#[post("/write_file", data = "<file>")]
-fn write_file(storage: &rocket::State<storage::Storage>, file: rocket::serde::json::Json<storage::File>) -> Result<(), std::io::Error>
+#[post("/write_file/<path..>", data = "<content>")]
+fn write_file(storage: &rocket::State<storage::Storage>, path: std::path::PathBuf, content: rocket::serde::json::Json<storage::FileContent>) -> rocket::http::Status
 {
+    let file = storage::File::new_with_content(storage::EntryPath { path: path, entry_type: storage::EntryType::File }, content.into_inner().content).unwrap();
     return match file.write(storage)
     {
-        Ok(_) => Ok(()),
-        Err(err) => Err(err),
+        Ok(_) => rocket::http::Status::Ok,
+        Err(_) => rocket::http::Status::BadRequest,
     }
 }
 
 
-#[post("/create_dir", data = "<path>")]
-fn create_dir(storage: &rocket::State<storage::Storage>, path: rocket::serde::json::Json<storage::EntryPath>) -> Result<(), std::io::Error>
+#[post("/create_dir/<path..>")]
+fn create_dir(storage: &rocket::State<storage::Storage>, path: std::path::PathBuf) -> rocket::http::Status
 {
-    return match storage::Dir::new(path.into_inner())
+    return match storage::Dir::new(storage::EntryPath { path: path, entry_type: storage::EntryType::Dir })
     {
         Ok(mut dir) => match dir.create(storage)
         {
-            Ok(()) => Ok(()),
-            Err(err) => Err(err),
+            Ok(()) => rocket::http::Status::Ok,
+            Err(_) => rocket::http::Status::BadRequest,
         }
-        Err(_) => Err(std::io::Error::new(std::io::ErrorKind::Other, "IllegalEntryType")),
+        Err(_) => rocket::http::Status::BadRequest,
     }
 }
 
 
-#[post("/read_dir", data = "<path>")]
-fn read_dir(storage: &rocket::State<storage::Storage>, path: rocket::serde::json::Json<storage::EntryPath>) -> Result<rocket::serde::json::Json<storage::Dir>, std::io::Error>
+#[get("/read_dir/<path..>")]
+fn read_dir(storage: &rocket::State<storage::Storage>, path: std::path::PathBuf) -> storage::DirEntries
 {
-    return match storage::Dir::new(path.into_inner())
-    {
-        Ok(mut dir) => match dir.read(storage)
-        {
-            Ok(()) => Ok(rocket::serde::json::Json(dir)),
-            Err(err) => Err(err),
-        }
-        Err(_) => Err(std::io::Error::new(std::io::ErrorKind::Other, "IllegalEntryType")),
-    }
+    let mut dir = storage::Dir::new(storage::EntryPath { path: path, entry_type: storage::EntryType::Dir }).unwrap();
+    dir.read(storage);
+    return dir.entries;
 }
 
 
