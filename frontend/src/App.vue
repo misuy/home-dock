@@ -1,28 +1,18 @@
 <template>
-  <EntriesArea path=""/>
-  <EntryBox :entry="example_entry()"/>
+    <router-view></router-view>
 </template>
 
 <script lang="ts">
-import EntryBox from "./components/EntryBox.vue"
-import EntriesArea from "./components/EntriesArea.vue";
-import { EntryType, StorageEntry } from "./util";
+import { defineComponent } from "vue"
 
-export default {
-  name: 'App',
-  components: {
-    EntryBox,
-    EntriesArea,
-  },
-  methods: {
-    example_entry(): StorageEntry {
-      return new StorageEntry("hehe/123/hihi", EntryType.Dir);
-    }
-  }
-}
+export default defineComponent({
+    name: "App",
+})
 </script>
 
 <style>
-#app {
-}
+    * {
+        margin: 0;
+        padding: 0;
+    }
 </style>

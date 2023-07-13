@@ -1,44 +1,53 @@
 <template>
-    <button @click="add_entry_test">click</button>
-    <EntryBox v-for="/* eslint-disable-line */ entry in entries" :entry="entry"/>
+    <div class="entries_area">
+        <EntryBox v-for="/* eslint-disable-line */ entry in entries" :entry="entry" @change-path="emit_change_path"/>
+    </div>
 </template>
 
 <script lang="ts">
-    import EntryBox from './EntryBox.vue';
-    import { defineComponent } from 'vue';
-    import { StorageEntry, EntryType } from "../util"
-    import { api_call_read_dir } from "../api_util"
+import EntryBox from './EntryBox.vue';
+import { defineComponent } from 'vue';
+import { StorageEntry } from "../util"
+import { api_call_read_dir, api_call_read_file } from "../api_util"
 
-    export default defineComponent({
-        name: "EntriesArea",
-        components: {
-            EntryBox,
+export default defineComponent({
+    name: "EntriesArea",
+    components: {
+        EntryBox,
+    },
+    props: {
+        path: {
+            type: String,
+            required: true,
+        }
+    },
+    data() {
+        return {
+            entries: new Array<StorageEntry>(),
+            mb_img: "",
+        }
+    },
+    emits: ["change-path"],
+    methods: {
+        set_entries(entries: Array<StorageEntry>) {
+            console.log(entries);
+            this.entries = entries;
         },
-        props: {
-            path: {
-                type: String,
-                required: true,
-            }
+        add_entry(entry: StorageEntry) {
+            this.entries.push(entry);
         },
-        data() {
-            return {
-                entries: new Array<StorageEntry>(),
-            }
+        emit_change_path(new_path: String) {
+            this.$emit("change-path", new_path);
         },
-        methods: {
-            set_entries(entries: Array<StorageEntry>) {
-                console.log(entries);
-                this.entries = entries;
-            },
-            add_entry(entry: StorageEntry) {
-                this.entries.push(entry);
-            },
-            add_entry_test() {
-                this.add_entry(new StorageEntry("test/path", EntryType.File));
-            }
-        },
-        created() {
-            api_call_read_dir(this.path, this.set_entries);
-        },
-    })
+    },
+    created() {
+        api_call_read_dir(this.path, this.set_entries);
+    },
+})
 </script>
+
+<style scoped>
+    .entries_area {
+        width: 500px;
+    }
+</style>

@@ -1,5 +1,9 @@
 <template>
-    <div class="entry_name">{{ file.name }}</div>
+    <div class="file_box">
+        <div class="entry_img">
+        </div>
+        <div class="entry_name">{{ file.name }}</div>
+    </div>
 </template>
 
 
@@ -17,3 +21,16 @@ export default defineComponent ({
     }
 })
 </script>
+
+<style scoped>
+    .file_box {
+        height: 100%;
+        display: grid;
+        grid-template-columns: min-content auto;
+        align-items: center;
+    }
+
+    .file_box:hover {
+        background-color: #E4CEF2;
+    }
+</style>
