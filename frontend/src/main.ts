@@ -5,7 +5,7 @@ import App from "./App.vue"
 
 
 const routes = [
-    {path: "/storage/:storage_path*", component: StorageArea},
+    {path: "/storage/:path*", component: StorageArea, props: { base_url: "/storage" }},
 ]
 
 const router = createRouter({

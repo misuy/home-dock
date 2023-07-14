@@ -49,9 +49,18 @@ fn read_dir(storage: &rocket::State<storage::Storage>, path: std::path::PathBuf)
 }
 
 
+#[get("/check_entry_type/<path..>")]
+fn check_entry_type(storage: &rocket::State<storage::Storage>, path: std::path::PathBuf) -> storage::EntryType
+{
+    let mut entry_path = storage::EntryPath { path: path, entry_type: storage::EntryType::NULL };
+    entry_path.check_entry_type(storage);
+    return entry_path.entry_type;
+}
+
+
 #[launch]
 fn launch() -> rocket::Rocket<rocket::Build>
 {
     let storage = storage::Storage::init().unwrap();
-    rocket::build().manage(storage).mount("/home_dock_api", routes![read_file, write_file, read_dir, create_dir])
+    rocket::build().manage(storage).mount("/home_dock_api", routes![read_file, write_file, read_dir, create_dir, check_entry_type])
 }

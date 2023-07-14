@@ -5,10 +5,12 @@ pub enum EntryError
 }
 
 
+#[derive(Copy, Clone)]
 pub enum EntryType
 {
     File,
     Dir,
+    NULL,
 }
 
 impl EntryType
@@ -18,11 +20,28 @@ impl EntryType
         return match self {
             EntryType::File => "file".to_string(),
             EntryType::Dir => "dir".to_string(),
+            EntryType::NULL => "null".to_string(),
         }
     }
 }
 
+impl<'r> rocket::response::Responder<'r, 'static> for EntryType
+{
 
+    fn respond_to(self, request:  &'r rocket::Request<'_>) -> rocket::response::Result<'static>
+    {
+        let mut json = "\"".to_string();
+        json.push_str(self.to_json().as_str());
+        json.push('\"');
+        rocket::Response::build()
+            .streamed_body(std::io::Cursor::new(json))
+            .raw_header("Access-Control-Allow-Origin", "*")
+            .header(rocket::http::ContentType::new("application", "json"))
+            .ok()
+    }
+}
+
+#[derive(Clone)]
 pub struct EntryPath
 {
     pub path: std::path::PathBuf,
@@ -40,6 +59,17 @@ impl EntryPath
         json.push_str(self.entry_type.to_json().as_str());
         json.push_str("\"}");
         return json;
+    }
+
+    pub fn check_entry_type(&mut self, storage: &Storage)
+    {
+        match storage.is_entry_exists(&self.path) {
+            true => match storage.is_dir(&self.path) {
+                true => self.entry_type = EntryType::Dir,
+                false => self.entry_type = EntryType::File,
+            },
+            false => self.entry_type = EntryType::NULL,
+        }
     }
 }
 
@@ -96,6 +126,7 @@ impl File
         {
             EntryType::File => Ok(File { path: path, content: FileContent{ content: Vec::new() } }),
             EntryType::Dir => Err(EntryError::IllegalEntryType),
+            EntryType::NULL => Err(EntryError::IllegalEntryType),
         }
     }
 
@@ -105,6 +136,7 @@ impl File
         {
             EntryType::File => Ok(File { path: path, content: FileContent{ content: content } }),
             EntryType::Dir => Err(EntryError::IllegalEntryType),
+            EntryType::NULL => Err(EntryError::IllegalEntryType),
         }
     }
 
@@ -209,6 +241,7 @@ impl Dir
         {
             EntryType::File => Err(EntryError::IllegalEntryType),
             EntryType::Dir => Ok(Dir { path: path, entries: DirEntries { entries: Vec::new() } }),
+            EntryType::NULL => Err(EntryError::IllegalEntryType),
         }
     }
 
@@ -330,5 +363,17 @@ impl Storage
             Ok(()) => Ok(()),
             Err(err) => Err(err),
         }
+    }
+
+    pub fn is_entry_exists(&self, storage_path: &std::path::PathBuf) -> bool
+    {
+        let path = self.convert_from_storage_path(storage_path);
+        return path.exists();
+    }
+
+    pub fn is_dir(&self, storage_path: &std::path::PathBuf) -> bool
+    {
+        let path = self.convert_from_storage_path(storage_path);
+        return path.is_dir();
     }
 }

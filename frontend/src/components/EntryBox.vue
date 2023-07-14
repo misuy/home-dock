@@ -1,23 +1,18 @@
 <template>
-    <div class="entry_box">
-        <DirBox @change-path="(new_path: String) => emit_change_path(new_path)" v-if="entry?.is_dir()" :dir="cast_entry_to_dir()"/>
-        <FileBox v-else :file="cast_entry_to_file()"/>
+    <div class="entry_box" @click="emit_change_path">
+        <div class="entry_img">
+        </div>
+        <div class="entry_name">{{ entry.name }}</div>
     </div>
 </template>
 
 
 <script lang="ts">
 import { defineComponent } from "vue"
-import FileBox from "./FileBox.vue"
-import DirBox from "./DirBox.vue"
-import { File, Dir, StorageEntry } from "../util"
+import { StorageEntry } from "../util"
 
 export default defineComponent  ({
     name: "EntryBox",
-    components: {
-        FileBox,
-        DirBox,
-    },
     props: {
         entry: {
             type: StorageEntry,
@@ -26,16 +21,8 @@ export default defineComponent  ({
     },
     emits: ["change-path"],
     methods: {
-        cast_entry_to_file(): File {
-            return new File(this.entry);
-        },
-
-        cast_entry_to_dir(): Dir {
-            return new Dir(this.entry);
-        },
-
-        emit_change_path(new_path: String) {
-            this.$emit("change-path", new_path);
+        emit_change_path() {
+            this.$emit("change-path", this.entry.path);
         }
     },
 })
@@ -45,6 +32,13 @@ export default defineComponent  ({
     .entry_box {
         width: 100%;
         height: 30px;
+        height: 100%;
+        display: grid;
+        grid-template-columns: min-content auto;
+        align-items: center;
     }
 
+    .entry_box:hover {
+        background-color: #E4CEF2;
+    }
 </style>
