@@ -2,12 +2,14 @@
     <div class="storage_area" :key="$route.path + entry_type">
         <DirArea v-if="is_entry_dir" :input_dir="entry.cast_to_dir()" @change-path="change_path"/>
         <ImgArea v-if="is_entry_img" :input_img="entry.cast_to_img()"/>
+        <FileArea v-if="is_entry_file" :input_file="entry.cast_to_file()"/>
     </div>
 </template>
 
 <script lang="ts">
 import DirArea from "./DirArea.vue";
 import ImgArea from "./ImgArea.vue";
+import FileArea from "./FileArea.vue";
 import { EntryType, StorageEntry } from "@/util";
 import { api_call_check_entry_type } from "@/api_util"
 import { defineComponent } from "vue";
@@ -23,6 +25,7 @@ export default defineComponent({
     components: {
         DirArea,
         ImgArea,
+        FileArea,
     },
     data() {
         return {

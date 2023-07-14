@@ -1,5 +1,6 @@
 <template>
     <div class="dir_area">
+        <button class="new_button">new</button>
         <EntryBox v-for="/* eslint-disable-line */ entry in dir.entries" :entry="entry" @change-path="emit_change_path"/>
     </div>
 </template>
@@ -30,6 +31,9 @@ export default defineComponent({
         emit_change_path(new_path: String) {
             this.$emit("change-path", new_path);
         },
+        create_new_dir(name: String) {
+
+        },
     },
     created() {
         this.dir.load_entries();
@@ -38,7 +42,7 @@ export default defineComponent({
 </script>
 
 <style scoped>
-    .entries_area {
+    .dir_area {
         width: 100%;
     }
 </style>

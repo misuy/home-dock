@@ -80,3 +80,15 @@ export function api_call_check_entry_type(path: string, success_callback: (type:
         },
     })
 }
+
+
+export function api_call_create_dir(path: string, success_callback: () => void) {
+    $.ajax({
+        url: API_URL + CREATE_DIR_URL + path,
+        method: "post",
+        dataType: "json",
+        success: function() {
+            success_callback();
+        },
+    })
+}

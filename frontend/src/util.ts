@@ -33,8 +33,8 @@ export class StorageEntry {
         return this.type == EntryType.File;
     }
 
-    get name(): string|undefined {
-        return this.path.split("/").pop() + (this.is_dir() ? " dir" : " file");
+    get name(): string {
+        return this.path.split("/").pop() + "";
     }
 
     load_type() {
@@ -69,16 +69,50 @@ export class Dir extends StorageEntry {
 
 export class File extends StorageEntry {
     data: Uint8Array|undefined;
+    url: string|undefined;
 
     constructor (entry: StorageEntry) {
         super(entry.path, entry.type);
         this.data = undefined;
+        this.url = undefined;
     }
 
-    load_data(callback: () => void) {
-        if (this.data == undefined) api_call_read_file(this.path.toString(), (content) => { this.data = content; callback(); } );
-        else callback();
+    load_data() {
+        if (this.data == undefined) api_call_read_file(this.path.toString(), (content) => { this.data = content; } );
     }
+
+    use_data(callback: (data: Uint8Array) => void) {
+        if (this.data == undefined) api_call_read_file(this.path.toString(), (content) => { this.data = content; callback(this.data); } );
+        else callback(this.data);
+    }
+
+    create_url() {
+        if (this.url == undefined) {
+            this.get_blob((blob) => { this.url = URL.createObjectURL(blob); })
+        }
+    }
+
+    use_url(callback: (url: string) => void) {
+        if (this.url == undefined) {
+            this.get_blob((blob) => { this.url = URL.createObjectURL(blob); callback(this.url); })
+        }
+        else callback(this.url);
+    }
+
+    get_blob(callback: (data: Blob) => void) {
+
+        this.use_data((data) => {
+            let type;
+            switch (this.type) {
+                case (EntryType.Jpg): { type = "image/jpeg"; break; }
+                case (EntryType.Png): { type = "image/png"; break; }
+                case (EntryType.File): { type = "text/plain"; break; }
+                default: return;
+            }
+            callback(new Blob([data as Uint8Array], { type: type }))
+        })
+    }
+    
 }
 
 export class Img extends File {
@@ -88,23 +122,13 @@ export class Img extends File {
         super(entry);
         this.url = undefined;
     }
+}
 
-    create_url() {
-        if (this.url == undefined) {
-            this.get_img_blob((blob) => { this.url = URL.createObjectURL(blob); })
-        }
-    }
-
-    get_img_blob(callback: (data: Blob) => void) {
-
-        super.load_data(() => {
-            let img_type;
-            switch (this.type) {
-                case (EntryType.Jpg): { img_type = "jpg"; break; }
-                case (EntryType.Png): { img_type = "png"; break; }
-                default: return;
-            }
-            callback(new Blob([this.data as Uint8Array], { type: "image/" + img_type }))
-        })
-    }
+export function save_file_by_url(url: string, file_name: string) {
+    const dwnld_link = document.createElement("a");
+    dwnld_link.href = url;
+    dwnld_link.download = file_name;
+    document.body.appendChild(dwnld_link);
+    dwnld_link.click();
+    document.body.removeChild(dwnld_link);
 }
