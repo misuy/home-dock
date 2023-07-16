@@ -1,0 +1,6 @@
+[default.limits]
+json = "64 MiB"
+
+[global]
+address = "192.168.0.88"
+port = 8000

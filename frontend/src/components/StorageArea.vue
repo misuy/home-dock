@@ -1,8 +1,16 @@
 <template>
     <div class="storage_area" :key="$route.path + entry_type">
-        <DirArea v-if="is_entry_dir" :input_dir="entry.cast_to_dir()" @change-path="change_path"/>
-        <ImgArea v-if="is_entry_img" :input_img="entry.cast_to_img()"/>
-        <FileArea v-if="is_entry_file" :input_file="entry.cast_to_file()"/>
+        <div class="header">
+            <img class="logo" src="../../public/logo.png" height="100"/>
+            <div class="name">home-dock</div>
+            <div class="path">{{ storage_path }}</div>
+        </div>
+        <div class="entries_area">
+            <EntryNotFound v-if="is_entry_null"/>
+            <DirArea v-if="is_entry_dir" :input_dir="entry.cast_to_dir()" @change-path="change_path"/>
+            <ImgArea v-if="is_entry_img" :input_img="entry.cast_to_img()"/>
+            <FileArea v-if="is_entry_file" :input_file="entry.cast_to_file()"/>
+        </div>
     </div>
 </template>
 
@@ -10,6 +18,7 @@
 import DirArea from "./DirArea.vue";
 import ImgArea from "./ImgArea.vue";
 import FileArea from "./FileArea.vue";
+import EntryNotFound from "./EntryNotFound.vue";
 import { EntryType, StorageEntry } from "@/util";
 import { api_call_check_entry_type } from "@/api_util"
 import { defineComponent } from "vue";
@@ -26,6 +35,7 @@ export default defineComponent({
         DirArea,
         ImgArea,
         FileArea,
+        EntryNotFound,
     },
     data() {
         return {
@@ -79,6 +89,52 @@ export default defineComponent({
 
 <style>
     .storage_area {
-        width: 500px;
+        width: 100%;
+        height: 100%;
+
+        display: grid;
+        grid-template-rows: minmax(10%, 100px) auto;
+    }
+
+    .header {
+        grid-row: 1;
+        width: 100%;
+
+        display: grid;
+        grid-template-columns: min-content max-content 1fr;
+        align-items: center;
+        text-align: center;
+    }
+
+    .logo {
+        grid-column: 1;
+    }
+
+    .name {
+        grid-column: 2;
+        font-weight: bold;
+        font-size: larger;
+    }
+
+    .path {
+        grid-column: 3;
+        font-weight: bold;
+        font-size: large;
+    }
+
+    .entries_area {
+        grid-row: 2;
+    }
+
+    button {
+        background-color: #8fbeff;
+        padding: 5px 5px;
+        text-decoration: none;
+        border: 2px #8fbeff;
+        border-radius: 5px;
+    }
+
+    button:hover {
+        background-color: #4d89dc;
     }
 </style>

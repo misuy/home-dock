@@ -1,4 +1,4 @@
-import { api_call_check_entry_type, api_call_read_dir, api_call_read_file } from "./api_util";
+import { api_call_check_entry_type, api_call_create_dir, api_call_read_dir, api_call_read_file, api_call_remove_entry, api_call_write_file } from "./api_util";
 
 export enum EntryType {
     File,
@@ -41,6 +41,10 @@ export class StorageEntry {
         api_call_check_entry_type(this.path.toString(), (type) => { this.type = type; });
     }
 
+    remove(callback: (type: EntryType) => void) {
+        api_call_remove_entry(this.path.toString(), callback);
+    }
+
     cast_to_dir(): Dir {
         return new Dir(this);
     }
@@ -65,6 +69,17 @@ export class Dir extends StorageEntry {
     load_entries() {
         api_call_read_dir(this.path.toString(), (entries) => this.entries = entries);
     }
+
+    is_exists(callback: (type: EntryType) => void) {
+        api_call_check_entry_type(this.path.toString(), callback);
+    }
+
+    create(callback: (type: EntryType) => void) {
+        this.is_exists((type) => { 
+            if (type != EntryType.NULL) callback(EntryType.NULL);
+            else api_call_create_dir(this.path.toString(), callback);
+        })
+    }
 }
 
 export class File extends StorageEntry {
@@ -75,6 +90,10 @@ export class File extends StorageEntry {
         super(entry.path, entry.type);
         this.data = undefined;
         this.url = undefined;
+    }
+
+    set_data(data: Uint8Array) {
+        this.data = data;
     }
 
     load_data() {
@@ -113,6 +132,9 @@ export class File extends StorageEntry {
         })
     }
     
+    write_data(callback: (type: EntryType) => void) {
+        this.use_data((data) => api_call_write_file(this.path.toString(), data, callback));
+    }
 }
 
 export class Img extends File {

@@ -1,9 +1,10 @@
-const API_URL: string = "http://localhost:8000/home_dock_api"
+const API_URL: string = "http://192.168.0.88:8000/home_dock_api"
 const READ_DIR_URL: string = "/read_dir";
 const CREATE_DIR_URL: string = "/create_dir";
 const READ_FILE_URL: string = "/read_file";
 const WRITE_FILE_URL: string = "/write_file";
 const CHECK_ENTRY_TYPE_URL: string = "/check_entry_type";
+const REMOVE_ENTRY_URL: string = "/remove_entry";
 
 
 import { StorageEntry, EntryType } from "./util";
@@ -82,13 +83,57 @@ export function api_call_check_entry_type(path: string, success_callback: (type:
 }
 
 
-export function api_call_create_dir(path: string, success_callback: () => void) {
+export function api_call_create_dir(path: string, success_callback: (type: EntryType) => void) {
     $.ajax({
         url: API_URL + CREATE_DIR_URL + path,
         method: "post",
         dataType: "json",
-        success: function() {
-            success_callback();
+        success: function(data) {
+            let entry_type;
+            switch (data) {
+                case ("dir"): { entry_type = EntryType.Dir; break; }
+                case ("file"): { entry_type = EntryType.File; break; }
+                default: entry_type = EntryType.NULL;
+            }
+            success_callback(entry_type);
+        },
+    })
+}
+
+
+export function api_call_write_file(path: string, data: Uint8Array, success_callback: (type: EntryType) => void) {
+    console.log(Array.from(data).toString());
+    $.ajax({
+        url: API_URL + WRITE_FILE_URL + path,
+        method: "post",
+        data: "{\"content\": [" + Array.from(data).toString() + "]}",
+        dataType: "json",
+        success: function(data) {
+            let entry_type;
+            switch (data) {
+                case ("dir"): { entry_type = EntryType.Dir; break; }
+                case ("file"): { entry_type = EntryType.File; break; }
+                default: entry_type = EntryType.NULL;
+            }
+            success_callback(entry_type);
+        },
+    })
+}
+
+
+export function api_call_remove_entry(path: string, success_callback: (type: EntryType) => void) {
+    $.ajax({
+        url: API_URL + REMOVE_ENTRY_URL + path,
+        method: "post",
+        dataType: "json",
+        success: function(data) {
+            let entry_type;
+            switch (data) {
+                case ("dir"): { entry_type = EntryType.Dir; break; }
+                case ("file"): { entry_type = EntryType.File; break; }
+                default: entry_type = EntryType.NULL;
+            }
+            success_callback(entry_type);
         },
     })
 }

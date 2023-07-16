@@ -71,6 +71,17 @@ impl EntryPath
             false => self.entry_type = EntryType::NULL,
         }
     }
+
+    pub fn remove_entry(&mut self, storage: &Storage)
+    {
+        self.check_entry_type(storage);
+        match self.entry_type
+        {
+            EntryType::File => storage.remove_file(&self.path),
+            EntryType::Dir => storage.remove_dir(&self.path),
+            EntryType::NULL => (),
+        }
+    }
 }
 
 
@@ -229,7 +240,7 @@ impl<'r> rocket::response::Responder<'r, 'static> for DirEntries
 
 pub struct Dir
 {
-    path: EntryPath,
+    pub path: EntryPath,
     pub entries: DirEntries,
 }
 
@@ -375,5 +386,17 @@ impl Storage
     {
         let path = self.convert_from_storage_path(storage_path);
         return path.is_dir();
+    }
+
+    pub fn remove_file(&self, storage_path: &std::path::PathBuf)
+    {
+        let path = self.convert_from_storage_path(storage_path);
+        std::fs::remove_file(path);
+    }
+
+    pub fn remove_dir(&self, storage_path: &std::path::PathBuf)
+    {
+        let path = self.convert_from_storage_path(storage_path);
+        std::fs::remove_dir_all(path);
     }
 }
